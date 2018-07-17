@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.js"></script>
+    <script src="https://www.weather.gov/source/aprfc/js/clipboard.js"></script>
+
+
+
+<script>
+
+var getUrlParameter = function getUrlParameter(sParam) {
+    var sPageURL = decodeURIComponent(window.location.search.substring(1)),
+        sURLVariables = sPageURL.split('&'),
+        sParameterName,
+        i;
+
+    for (i = 0; i < sURLVariables.length; i++) {
+        sParameterName = sURLVariables[i].split('=');
+
+        if (sParameterName[0] === sParam) {
+            return sParameterName[1] === undefined ? true : sParameterName[1];
+        }
+    }
+};
+
+
+var imgData;
+var lastImage = 0;
+var project = getUrlParameter('project');
+
+var params = {
+    project: project,
+    action: 'getImageList'
+    }
+
+
+function saveValue(param,newvalue){
+
+    $.ajax({
+        url: "analysisBackend.php",
+        data: { "param": param,
+                "value":newvalue,
+                "project":project,
+                "action":"setParam"},
+        async: false,
+        success: function(response) {
+            //Do Something
+        },
+        error: function(xhr) {
+            //Do Something to handle error
+        }
+    });
+
+}
+
+
+function makeData(type,dates){
+
+    var shef = '';
+    var shefMessage = '';
+    $.getJSON( "analysisBackend.php",params, function( data ) {
+        imgData = data;
+    });
+    if(arguments.length == 1) dates = Object.keys(imgData['img']).sort();
+    $.each(dates,function(index, value){
+        var shefDate = moment(imgData['img'][value]['obsTime']).format('YYMMDD [Z] [DH]HHmm');
+        var excelDate = moment(imgData['img'][value]['obsTime']).format('YYYY-MM-DD HH:mm');
+        if(imgData['img'][value]['pixelElev'] == null) return true;
+        if(type == 'shef'){
+            row = '.AR '+imgData['meta']['nwslid']+' '+shefDate+'/'+imgData['meta']['pe']+' '+imgData['img'][value]['pixelElev'];
+        }
+        else if(type == 'csv'){
+            row = excelDate+','+imgData['img'][value]['pixelElev'];
+        }
+        shefMessage = shefMessage + row + "<br />";
+    })
+    $("#shefData").html(shefMessage);
+}
+
+
+function loadImage(imageId,data){
+
+    imageUrl = "cams-archive/"+project+"/"+data['img'][imageId]['filename'];
+
+    $("#vOffset").val(data['img'][imageId]['vOffset']);
+    $("#hOffset").val(data['img'][imageId]['hOffset']);
+    $('#folder').css({'background-image': 'url('+imageUrl+')','background-position':$("#hOffset").val()+'px '+$("#vOffset").val()+'px'});
+    $("#folder").width(data['img'][imageId]['width']).height(data['img'][imageId]['height']);
+    $("#filename").text(data['img'][imageId]['filename']);
+    $("#vertLineRef").val(data['meta']['vertLineRef']);
+    $("#pixelElev").val(data['img'][imageId]['pixelElev']);
+    $("#pickY").val(data['img'][imageId]['pickY']);
+    $("#pickX").val(data['img'][imageId]['pickX']);
+    $('[name=currentImage]').val(imageId);
+
+
+    drawCrossHair(data['img'][imageId]['pickY'],$("#vertLineRef").val(),"folder");
+}
+
+
+function drawCrossHair(y,x,id)
+{
+    var canvas = document.getElementById(id);
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
+    ctx=canvas.getContext("2d");
+
+    //Draw horizontal
+    ctx.beginPath();
+    ctx.strokeStyle = 'red';
+    ctx.moveTo(0,y);
+    ctx.lineTo(canvas.width,y);
+    ctx.stroke();
+
+    //Draw vertical
+    ctx.beginPath();
+    ctx.strokeStyle = 'green';
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,canvas.height);
+    ctx.stroke();
+
+}
+
+
+
+$(document).ready(function() {
+    $("#folder").click(function(e) {
+        var offset = $(this).offset();
+        $("#pickX").val(e.pageX - offset.left);
+        $("#pickY").val(e.pageY - offset.top);
+        drawCrossHair($("#pickY").val(),$("#vertLineRef").val(),"folder");
+        console.log(parseInt(imgData['img'][lastImage]['height']));
+        console.log(parseInt($("#pickY").val()));
+        saveValue("img_"+lastImage+"_pickX",$("#pickX").val());
+        saveValue("img_"+lastImage+"_pickY",$("#pickY").val());
+        $("#pixelElev").val(parseInt(imgData['img'][lastImage]['height'])-parseInt($("#pickY").val()));
+        saveValue("img_"+lastImage+"_pixelElev",$("#pixelElev").val());
+    });
+
+    $('#folder').mousemove(function(e) {
+        var offset = $(this).offset();
+        $("#pointerX").text(Math.round(e.pageX - offset.left));
+        $("#pointerY").text(Math.round(e.pageY - offset.top));
+    });
+
+    $("#vertLineRef").blur(function(){
+        drawCrossHair($("#pickY").val(),$("#vertLineRef").val(),"folder");
+        saveValue("meta_vertLineRef",$("#vertLineRef").val());
+    });
+
+    $("#vOffset").blur(function(){
+        $('#folder').css('background-position', $("#hOffset").val()+'px '+$("#vOffset").val()+'px');
+        saveValue("img_"+lastImage+"_vOffset",$("#vOffset").val());
+    });
+
+    $("#hOffset").blur(function(){
+        $('#folder').css('background-position', $("#hOffset").val()+'px '+$("#vOffset").val()+'px');
+        saveValue("img_"+lastImage+"_hOffset",$("#hOffset").val());
+    });
+
+    $("#currentImage-dropdown").change(function(){
+        var newImage = $("#currentImage-dropdown").val();
+        console.log($("#currentImage-dropdown").val());
+        $.getJSON( "analysisBackend.php",params, function( data ) {
+            imgData = data;
+            loadImage(newImage,imgData);
+            lastImage = newImage;
+        });
+    });
+
+    $("#makeShef").click(function(){
+        makeData('shef');
+    });
+
+    $("#makeCsv").click(function(){
+        makeData('csv');
+    });
+
+    $(document).keydown(function(e) {
+        switch(e.which) {
+            case 37: // left
+                var imgArray = Object.keys(imgData['img']).sort();
+                var index = $.inArray(lastImage,imgArray);
+                if(index == 0) index = imgArray.length;
+
+                var newImage = imgArray[index-1];
+                $.getJSON( "analysisBackend.php",params, function( data ) {
+                    imgData = data;
+                    loadImage(newImage,imgData);
+                    lastImage = newImage;
+                });
+            break;
+
+            case 38: // up
+                $("#pickY").val(parseInt($("#pickY").val())-1);
+                drawCrossHair($("#pickY").val(),$("#vertLineRef").val(),"folder");
+                saveValue("img_"+lastImage+"_pickY",$("#pickY").val());
+                $("#pixelElev").val(parseInt(imgData['img'][lastImage]['height'])-parseInt($("#pickY").val()));
+                saveValue("img_"+lastImage+"_pixelElev",$("#pixelElev").val());
+                $.getJSON( "analysisBackend.php",params, function( data ) {
+                    imgData = data;
+                    loadImage(lastImage,imgData);
+                });
+            break;
+
+            case 39: // right
+                var imgArray = Object.keys(imgData['img']).sort();
+                var index = $.inArray(lastImage,imgArray);
+                if(index == imgArray.length-1) index = -1;
+                var newImage = imgArray[index+1];
+                $.getJSON( "analysisBackend.php",params, function( data ) {
+                    imgData = data;
+                    loadImage(newImage,imgData);
+                    lastImage = newImage;
+                });
+            break;
+
+            case 40: // down
+                $("#pickY").val(parseInt($("#pickY").val())+1);
+                drawCrossHair($("#pickY").val(),$("#vertLineRef").val(),"folder");
+                saveValue("img_"+lastImage+"_pickY",$("#pickY").val());
+                $("#pixelElev").val(parseInt(imgData['img'][lastImage]['height'])-parseInt($("#pickY").val()));
+                saveValue("img_"+lastImage+"_pixelElev",$("#pixelElev").val());
+                $.getJSON( "analysisBackend.php",params, function( data ) {
+                    imgData = data;
+                    loadImage(lastImage,imgData);
+                });
+            break;
+
+            default: return; // exit this handler for other keys
+        }
+        e.preventDefault(); // prevent the default action (scroll / move caret)
+    });
+});
+
+
+
+
+$.getJSON( "analysisBackend.php",params, function( data ) {
+    imgData = data;
+    for (var key in data['img']) {
+        if(key > lastImage) lastImage = key;
+    }
+    loadImage(lastImage,data);
+    $.each(Object.keys(data['img']).sort().reverse(), function (i,key) {
+        var d = moment.unix(key).format("MM/DD/YYYY hh:mm");
+        $("#currentImage-dropdown").append($('<option></option>').attr('value', key).text(d));
+    })
+
+});
+
+
+</script>
+</head>
+<body>
+    <p> Controls:<br />
+        <strong>Left and Right Arrows:</strong> Advance or rewind images<br />
+        <strong>Mouse Click:</strong> Set horizontal stage reference Line based on intersection with green reference line<br />
+        <strong>Up and Down Arrows:</strong> Fine tune the horizontal stage reference Line<br />
+    <p>
+    <div>
+        <label for="vertLineRef">Vertical Reference Line: </label>
+        <input type="text" id="vertLineRef"><br />
+        <label for="pickX">X click: </label>
+        <input type="text" id="pickX">
+        <label for="pickY">Y click: </label>
+        <input type="text" id="pickY"><br />
+        <label for="vOffset">Image Offset y: </label>
+        <input type="text" id="vOffset" size="5">
+        <label for="vOffset">Image Offset x: </label>
+        <input type="text" id="hOffset" size="5"><br />
+        <strong><label for="pixelElev">Pixel Elevation: </label>
+        <input style="background-color: #ccffcc" type="text" id="pixelElev"></strong>
+
+    </div>
+    Select Image: <select id="currentImage-dropdown" name="currentImage"></select><br />
+    <button id="makeShef">Make Shef Data</button>
+    <button id="makeCsv">Make CSV Data</button>
+    <table>
+        <tr><td>File:</td><td><div id = 'filename'></div></td><td width="20"></td><td>Mouse Location </td><td> X:<span id="pointerX"></span></td><td> Y:<span id="pointerY"></span></td></tr>
+    </table>
+    <canvas id="folder"></canvas>
+    <div id="container"></div>
+    <button class="btn" data-clipboard-target="#shefData">Copy shef to Clipboard</button>
+    <div id="shefData"></div>
+</body>
+<script>
+    new Clipboard('.btn');
+</script>
