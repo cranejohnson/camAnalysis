@@ -57,8 +57,8 @@ if($action == 'getImageList'){
             "pixelElev" => null,
             "vOffset" => 0,
             "hOffset" => 0);
-        $data['img'][intval($fileDate)] = $fileData;
-        $data['meta'] = array(
+        if(!isset($data['img'][intval($fileDate)]))  $data['img'][intval($fileDate)] = $fileData;
+        if(!isset($data['meta'])) $data['meta'] = array(
             "nwslid" => '',
             "pe" => '',
             "lastEdit"=> '',
