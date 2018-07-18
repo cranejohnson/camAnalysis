@@ -3,7 +3,8 @@
 <head>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.js"></script>
-    <script src="https://www.weather.gov/source/aprfc/js/clipboard.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.21/moment-timezone-with-data-2012-2022.js"></script>
+<script src="https://www.weather.gov/source/aprfc/js/clipboard.js"></script>
 
 
 
@@ -29,6 +30,7 @@ var imgData;
 var lastImage = 0;
 var project = getUrlParameter('project');
 
+
 var params = {
     project: project,
     action: 'getImageList'
@@ -38,7 +40,7 @@ var params = {
 function saveValue(param,newvalue){
 
     $.ajax({
-        url: "analysisBackend.php",
+        url: "./analysisBackEnd.php",
         data: { "param": param,
                 "value":newvalue,
                 "project":project,
@@ -56,7 +58,6 @@ function saveValue(param,newvalue){
 
 
 function makeData(type,dates){
-
     var shef = '';
     var shefMessage = '';
     $.getJSON( "analysisBackend.php",params, function( data ) {
@@ -64,8 +65,8 @@ function makeData(type,dates){
     });
     if(arguments.length == 1) dates = Object.keys(imgData['img']).sort();
     $.each(dates,function(index, value){
-        var shefDate = moment(imgData['img'][value]['obsTime']).format('YYMMDD [Z] [DH]HHmm');
-        var excelDate = moment(imgData['img'][value]['obsTime']).format('YYYY-MM-DD HH:mm');
+        var shefDate = moment(imgData['img'][value]['obsTime']).tz("UTC").format('YYMMDD [Z] [DH]HHmm');
+        var excelDate = moment(imgData['img'][value]['obsTime']).tz("UTC").format('YYYY-MM-DD HH:mm');
         if(imgData['img'][value]['pixelElev'] == null) return true;
         if(type == 'shef'){
             row = '.AR '+imgData['meta']['nwslid']+' '+shefDate+'/'+imgData['meta']['pe']+' '+imgData['img'][value]['pixelElev'];
@@ -81,7 +82,7 @@ function makeData(type,dates){
 
 function loadImage(imageId,data){
 
-    imageUrl = "cams-archive/"+project+"/"+data['img'][imageId]['filename'];
+    imageUrl = "../cam-images/"+project+"/"+data['img'][imageId]['filename'];
 
     $("#vOffset").val(data['img'][imageId]['vOffset']);
     $("#hOffset").val(data['img'][imageId]['hOffset']);
@@ -162,7 +163,7 @@ $(document).ready(function() {
     $("#currentImage-dropdown").change(function(){
         var newImage = $("#currentImage-dropdown").val();
         console.log($("#currentImage-dropdown").val());
-        $.getJSON( "analysisBackend.php",params, function( data ) {
+        $.getJSON( "./analysisBackEnd.php",params, function( data ) {
             imgData = data;
             loadImage(newImage,imgData);
             lastImage = newImage;
@@ -185,7 +186,7 @@ $(document).ready(function() {
                 if(index == 0) index = imgArray.length;
 
                 var newImage = imgArray[index-1];
-                $.getJSON( "analysisBackend.php",params, function( data ) {
+                $.getJSON( "./analysisBackEnd.php",params, function( data ) {
                     imgData = data;
                     loadImage(newImage,imgData);
                     lastImage = newImage;
@@ -198,7 +199,7 @@ $(document).ready(function() {
                 saveValue("img_"+lastImage+"_pickY",$("#pickY").val());
                 $("#pixelElev").val(parseInt(imgData['img'][lastImage]['height'])-parseInt($("#pickY").val()));
                 saveValue("img_"+lastImage+"_pixelElev",$("#pixelElev").val());
-                $.getJSON( "analysisBackend.php",params, function( data ) {
+                $.getJSON( "./analysisBackEnd.php",params, function( data ) {
                     imgData = data;
                     loadImage(lastImage,imgData);
                 });
@@ -209,7 +210,7 @@ $(document).ready(function() {
                 var index = $.inArray(lastImage,imgArray);
                 if(index == imgArray.length-1) index = -1;
                 var newImage = imgArray[index+1];
-                $.getJSON( "analysisBackend.php",params, function( data ) {
+                $.getJSON( "./analysisBackEnd.php",params, function( data ) {
                     imgData = data;
                     loadImage(newImage,imgData);
                     lastImage = newImage;
@@ -222,7 +223,7 @@ $(document).ready(function() {
                 saveValue("img_"+lastImage+"_pickY",$("#pickY").val());
                 $("#pixelElev").val(parseInt(imgData['img'][lastImage]['height'])-parseInt($("#pickY").val()));
                 saveValue("img_"+lastImage+"_pixelElev",$("#pixelElev").val());
-                $.getJSON( "analysisBackend.php",params, function( data ) {
+                $.getJSON( "./analysisBackEnd.php",params, function( data ) {
                     imgData = data;
                     loadImage(lastImage,imgData);
                 });
@@ -237,14 +238,14 @@ $(document).ready(function() {
 
 
 
-$.getJSON( "analysisBackend.php",params, function( data ) {
+$.getJSON( "./analysisBackEnd.php",params, function( data ) {
     imgData = data;
     for (var key in data['img']) {
         if(key > lastImage) lastImage = key;
     }
     loadImage(lastImage,data);
     $.each(Object.keys(data['img']).sort().reverse(), function (i,key) {
-        var d = moment.unix(key).format("MM/DD/YYYY hh:mm");
+        var d = moment.unix(key).tz("UTC").format("MM/DD/YYYY HH:mm");
         $("#currentImage-dropdown").append($('<option></option>').attr('value', key).text(d));
     })
 

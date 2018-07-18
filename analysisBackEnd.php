@@ -1,12 +1,13 @@
 <?php
+date_default_timezone_set('UTC');
 
 $action = $_GET['action'];
 $project = $_GET['project'];
 
 $data= array();
 
-if(file_exists("./cams-archive/".$project."/data.json")){
-    $data = json_decode(file_get_contents("./cams-archive/".$project."/data.json"),TRUE);
+if(file_exists("../cam-images/".$project."/data.json")){
+    $data = json_decode(file_get_contents("../cam-images/".$project."/data.json"),TRUE);
 }
 
 
@@ -22,13 +23,13 @@ if($action == 'setParam'){
     if(count($path) == 3){
         $data[$path[0]][$path[1]][$path[2]] = intval($value);
     }
-    file_put_contents("./cams-archive/".$project."/data.json",json_encode($data,JSON_PRETTY_PRINT));
+    file_put_contents("../cam-images/".$project."/data.json",json_encode($data,JSON_PRETTY_PRINT));
 }
 
 
 if($action == 'getImageList'){
 
-    $directory = "./cams-archive/".$project."/";
+    $directory = "../cam-images/".$project."/";
     $scanned_directory = scandir($directory);
     foreach($scanned_directory as $file){
 
@@ -68,7 +69,8 @@ if($action == 'getImageList'){
             "note" => '');
     }
     ksort($data);
-    file_put_contents("./cams-archive/".$project."/data.json",json_encode($data,JSON_PRETTY_PRINT));
+    file_put_contents("../cam-images/".$project."/data.json",json_encode($data,JSON_PRETTY_PRINT));
+    chmod("../cam-images/".$project."/data.json",0777);
     echo json_encode($data);
 }
 ?>
