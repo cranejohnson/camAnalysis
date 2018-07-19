@@ -94,6 +94,7 @@ function loadImage(imageId,data){
     $("#pickY").val(data['img'][imageId]['pickY']);
     $("#pickX").val(data['img'][imageId]['pickX']);
     $('[name=currentImage]').val(imageId);
+    $('[name=projectUpload]').val(project);
 
 
     drawCrossHair(data['img'][imageId]['pickY'],$("#vertLineRef").val(),"folder");
@@ -123,6 +124,29 @@ function drawCrossHair(y,x,id)
 
 }
 
+function startUpload(){
+    document.getElementById('uploadProcess').style.visibility = 'visible';
+    document.getElementById('uploadForm').style.visibility = 'hidden';
+    return true;
+}
+
+function stopUpload(success,uploadedFile){
+    var result = '';
+    if (success == 1){
+        result = '<span class="sucess-msg">The file was uploaded successfully!<\/span><br/><br/>';
+        //Uploaded file preview
+        var embed = document.getElementById("UploadedFile");
+        var clone = embed.cloneNode(true);
+        clone.setAttribute('src',uploadedFile);
+        embed.parentNode.replaceChild(clone,embed);
+    }else {
+       result = '<span class="error-msg">There was an error during file upload!<\/span><br/><br/>';
+    }
+    document.getElementById('uploadProcess').style.visibility = 'hidden';
+    document.getElementById('uploadForm').innerHTML = result + '<label>File: <input name="myfile" type="file" size="30" /><\/label><label><input type="submit" name="submitBtn" class="sbtn" value="Upload" /><\/label>';
+    document.getElementById('uploadForm').style.visibility = 'visible';      
+    return true;   
+}
 
 
 $(document).ready(function() {
@@ -255,6 +279,23 @@ $.getJSON( "./analysisBackEnd.php",params, function( data ) {
 </script>
 </head>
 <body>
+
+    <form action="upload.php" method="post" enctype="multipart/form-data" target="uploadTarget" onsubmit="startUpload();" >
+     <p id="uploadProcess"></p>
+        <input type="hidden" name="projectUpload" value="">
+        <p id="uploadForm" align="left">
+            <label>
+                Upload New Image File: <input name="myfile" type="file" size="30" />
+                
+            </label>
+            <label>
+                <input type="submit" name="submitBtn" class="sbtn" value="Upload" />
+            </label>
+        </p>
+        <iframe id="uploadTarget" name="uploadTarget" src="#" style="width:0;height:0;border:0px solid #fff;"></iframe>
+    </form>
+    <!-- Uploaded file preview -->
+
     <p> Controls:<br />
         <strong>Left and Right Arrows:</strong> Advance or rewind images<br />
         <strong>Mouse Click:</strong> Set horizontal stage reference Line based on intersection with green reference line<br />
@@ -286,6 +327,7 @@ $.getJSON( "./analysisBackEnd.php",params, function( data ) {
     <button class="btn" data-clipboard-target="#shefData">Copy shef to Clipboard</button>
     <div id="shefData"></div>
 </body>
+
 <script>
     new Clipboard('.btn');
 </script>
