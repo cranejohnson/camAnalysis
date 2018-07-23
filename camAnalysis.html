@@ -26,8 +26,9 @@ var getUrlParameter = function getUrlParameter(sParam) {
 };
 
 
-var imgData;
+var imgData = {};
 var lastImage = 0;
+
 var project = getUrlParameter('project');
 
 
@@ -37,32 +38,21 @@ var params = {
     }
 
 
-function saveValue(param,newvalue){
 
+function saveData(jsonData){
     $.ajax({
-        url: "./analysisBackEnd.php",
-        data: { "param": param,
-                "value":newvalue,
-                "project":project,
-                "action":"setParam"},
-        async: false,
-        success: function(response) {
-            //Do Something
-        },
-        error: function(xhr) {
-            //Do Something to handle error
-        }
+        type: 'POST',
+        url: 'analysisBackEnd.php',
+        data: {action:"saveData",json: JSON.stringify(jsonData)},
+        dataType: 'json'
     });
 
 }
 
-
 function makeData(type,dates){
     var shef = '';
     var shefMessage = '';
-    $.getJSON( "analysisBackend.php",params, function( data ) {
-        imgData = data;
-    });
+
     if(arguments.length == 1) dates = Object.keys(imgData['img']).sort();
     $.each(dates,function(index, value){
         var shefDate = moment(imgData['img'][value]['obsTime']).tz("UTC").format('YYMMDD [Z] [DH]HHmm');
@@ -94,10 +84,11 @@ function loadImage(imageId,data){
     $("#pickY").val(data['img'][imageId]['pickY']);
     $("#pickX").val(data['img'][imageId]['pickX']);
     $('[name=currentImage]').val(imageId);
-    $('[name=projectUpload]').val(project);
+    $('[name=project]').val(project);
 
 
     drawCrossHair(data['img'][imageId]['pickY'],$("#vertLineRef").val(),"folder");
+    console.log(imgData);
 }
 
 
@@ -144,8 +135,8 @@ function stopUpload(success,uploadedFile){
     }
     document.getElementById('uploadProcess').style.visibility = 'hidden';
     document.getElementById('uploadForm').innerHTML = result + '<label>File: <input name="myfile" type="file" size="30" /><\/label><label><input type="submit" name="submitBtn" class="sbtn" value="Upload" /><\/label>';
-    document.getElementById('uploadForm').style.visibility = 'visible';      
-    return true;   
+    document.getElementById('uploadForm').style.visibility = 'visible';
+    return true;
 }
 
 
@@ -154,13 +145,12 @@ $(document).ready(function() {
         var offset = $(this).offset();
         $("#pickX").val(e.pageX - offset.left);
         $("#pickY").val(e.pageY - offset.top);
+        currentImage = $('[name=currentImage]').val();
         drawCrossHair($("#pickY").val(),$("#vertLineRef").val(),"folder");
-        console.log(parseInt(imgData['img'][lastImage]['height']));
-        console.log(parseInt($("#pickY").val()));
-        saveValue("img_"+lastImage+"_pickX",$("#pickX").val());
-        saveValue("img_"+lastImage+"_pickY",$("#pickY").val());
-        $("#pixelElev").val(parseInt(imgData['img'][lastImage]['height'])-parseInt($("#pickY").val()));
-        saveValue("img_"+lastImage+"_pixelElev",$("#pixelElev").val());
+        window.imgData['img'][currentImage]['pickX'] = $("#pickX").val();
+        window.imgData['img'][currentImage]['pickY'] = $("#pickY").val();
+        $("#pixelElev").val(parseInt(imgData['img'][currentImage]['height'])-parseInt($("#pickY").val()));
+        window.imgData['img'][currentImage]['pixelElev'] = $("#pixelElev").val();
     });
 
     $('#folder').mousemove(function(e) {
@@ -171,27 +161,22 @@ $(document).ready(function() {
 
     $("#vertLineRef").blur(function(){
         drawCrossHair($("#pickY").val(),$("#vertLineRef").val(),"folder");
-        saveValue("meta_vertLineRef",$("#vertLineRef").val());
+        window.imgData['meta']['vertLineRef']= $("#vertLineRef").val();
     });
 
     $("#vOffset").blur(function(){
         $('#folder').css('background-position', $("#hOffset").val()+'px '+$("#vOffset").val()+'px');
-        saveValue("img_"+lastImage+"_vOffset",$("#vOffset").val());
+        window.imgData['img'][lastImage]['vOffset'] = $("#vOffset").val();
     });
 
     $("#hOffset").blur(function(){
         $('#folder').css('background-position', $("#hOffset").val()+'px '+$("#vOffset").val()+'px');
-        saveValue("img_"+lastImage+"_hOffset",$("#hOffset").val());
+        window.imgData['img'][lastImage]['hOffset'] = $("#hOffset").val();
     });
 
     $("#currentImage-dropdown").change(function(){
-        var newImage = $("#currentImage-dropdown").val();
-        console.log($("#currentImage-dropdown").val());
-        $.getJSON( "./analysisBackEnd.php",params, function( data ) {
-            imgData = data;
-            loadImage(newImage,imgData);
-            lastImage = newImage;
-        });
+        currentImage = $("#currentImage-dropdown").val();
+        loadImage(currentImage,imgData);
     });
 
     $("#makeShef").click(function(){
@@ -202,55 +187,50 @@ $(document).ready(function() {
         makeData('csv');
     });
 
+    $("#saveData").click(function(){
+        console.log(imgData);
+        saveData(imgData);
+    });
+
     $(document).keydown(function(e) {
         switch(e.which) {
             case 37: // left
                 var imgArray = Object.keys(imgData['img']).sort();
-                var index = $.inArray(lastImage,imgArray);
+                currentImage = $('[name=currentImage]').val();
+                console.log(currentImage);
+                var index = $.inArray(currentImage,imgArray);
                 if(index == 0) index = imgArray.length;
-
-                var newImage = imgArray[index-1];
-                $.getJSON( "./analysisBackEnd.php",params, function( data ) {
-                    imgData = data;
-                    loadImage(newImage,imgData);
-                    lastImage = newImage;
-                });
+                currentImage = imgArray[index-1];
+                loadImage(currentImage,imgData);
             break;
 
             case 38: // up
                 $("#pickY").val(parseInt($("#pickY").val())-1);
                 drawCrossHair($("#pickY").val(),$("#vertLineRef").val(),"folder");
-                saveValue("img_"+lastImage+"_pickY",$("#pickY").val());
-                $("#pixelElev").val(parseInt(imgData['img'][lastImage]['height'])-parseInt($("#pickY").val()));
-                saveValue("img_"+lastImage+"_pixelElev",$("#pixelElev").val());
-                $.getJSON( "./analysisBackEnd.php",params, function( data ) {
-                    imgData = data;
-                    loadImage(lastImage,imgData);
-                });
+                currentImage = $('[name=currentImage]').val();
+                window.imgData['img'][currentImage]['pickY'] = $("#pickY").val();
+                $("#pixelElev").val(parseInt(imgData['img'][currentImage]['height'])-parseInt($("#pickY").val()));
+                imgData['img'][currentImage]['pixelElev'] = $("#pixelElev").val();
+                loadImage(currentImage,imgData);
             break;
 
             case 39: // right
                 var imgArray = Object.keys(imgData['img']).sort();
-                var index = $.inArray(lastImage,imgArray);
+                currentImage = $('[name=currentImage]').val();
+                var index = $.inArray(currentImage,imgArray);
                 if(index == imgArray.length-1) index = -1;
-                var newImage = imgArray[index+1];
-                $.getJSON( "./analysisBackEnd.php",params, function( data ) {
-                    imgData = data;
-                    loadImage(newImage,imgData);
-                    lastImage = newImage;
-                });
+                currentImage = imgArray[index+1];
+                loadImage(currentImage,imgData);
             break;
 
             case 40: // down
                 $("#pickY").val(parseInt($("#pickY").val())+1);
                 drawCrossHair($("#pickY").val(),$("#vertLineRef").val(),"folder");
-                saveValue("img_"+lastImage+"_pickY",$("#pickY").val());
-                $("#pixelElev").val(parseInt(imgData['img'][lastImage]['height'])-parseInt($("#pickY").val()));
-                saveValue("img_"+lastImage+"_pixelElev",$("#pixelElev").val());
-                $.getJSON( "./analysisBackEnd.php",params, function( data ) {
-                    imgData = data;
-                    loadImage(lastImage,imgData);
-                });
+                currentImage = $('[name=currentImage]').val();
+                window.imgData['img'][currentImage]['pickY'] = $("#pickY").val();
+                $("#pixelElev").val(parseInt(imgData['img'][currentImage]['height'])-parseInt($("#pickY").val()));
+                window.imgData['img'][currentImage]['pixelElev'] = $("#pixelElev").val();
+                loadImage(currentImage,imgData);
             break;
 
             default: return; // exit this handler for other keys
@@ -267,6 +247,7 @@ $.getJSON( "./analysisBackEnd.php",params, function( data ) {
     for (var key in data['img']) {
         if(key > lastImage) lastImage = key;
     }
+    console.log(lastImage);
     loadImage(lastImage,data);
     $.each(Object.keys(data['img']).sort().reverse(), function (i,key) {
         var d = moment.unix(key).tz("UTC").format("MM/DD/YYYY HH:mm");
@@ -279,22 +260,20 @@ $.getJSON( "./analysisBackEnd.php",params, function( data ) {
 </script>
 </head>
 <body>
-
     <form action="upload.php" method="post" enctype="multipart/form-data" target="uploadTarget" onsubmit="startUpload();" >
-     <p id="uploadProcess"></p>
-        <input type="hidden" name="projectUpload" value="">
-        <p id="uploadForm" align="left">
+     <div id="uploadProcess"></div>
+        <input type="hidden" name="project" value="">
+        <div id="uploadForm" align="left">
             <label>
                 Upload New Image File: <input name="myfile" type="file" size="30" />
-                
+
             </label>
             <label>
                 <input type="submit" name="submitBtn" class="sbtn" value="Upload" />
             </label>
-        </p>
+        </div>
         <iframe id="uploadTarget" name="uploadTarget" src="#" style="width:0;height:0;border:0px solid #fff;"></iframe>
     </form>
-    <!-- Uploaded file preview -->
 
     <p> Controls:<br />
         <strong>Left and Right Arrows:</strong> Advance or rewind images<br />
@@ -315,10 +294,14 @@ $.getJSON( "./analysisBackEnd.php",params, function( data ) {
         <strong><label for="pixelElev">Pixel Elevation: </label>
         <input style="background-color: #ccffcc" type="text" id="pixelElev"></strong>
 
+        <input type="hidden"  name="currentImage" value="">
+        <input type="hidden"  name="project" value="">
+
     </div>
     Select Image: <select id="currentImage-dropdown" name="currentImage"></select><br />
     <button id="makeShef">Make Shef Data</button>
     <button id="makeCsv">Make CSV Data</button>
+    <button id="saveData" style="background-color: #FCF3CF;">Save Edits!</button>
     <table>
         <tr><td>File:</td><td><div id = 'filename'></div></td><td width="20"></td><td>Mouse Location </td><td> X:<span id="pointerX"></span></td><td> Y:<span id="pointerY"></span></td></tr>
     </table>

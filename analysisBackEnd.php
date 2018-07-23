@@ -1,8 +1,13 @@
 <?php
 date_default_timezone_set('UTC');
 
-$action = $_GET['action'];
-$project = $_GET['project'];
+
+
+$action = $_REQUEST['action'];
+
+$project = $_REQUEST['project'];
+
+
 
 $data= array();
 
@@ -12,6 +17,13 @@ if(file_exists("../cam-images/".$project."/data.json")){
 
 
 $i=0;
+
+ if($action == 'saveData'){
+     $json = json_decode($_REQUEST['json'],TRUE);
+     $proj = $json['meta']['project'];
+     file_put_contents("../cam-images/".$proj."/data.json",json_encode($json,JSON_PRETTY_PRINT));
+ }
+
 
 if($action == 'setParam'){
     $param = $_GET['param'];
@@ -60,6 +72,7 @@ if($action == 'getImageList'){
             "hOffset" => 0);
         if(!isset($data['img'][intval($fileDate)]))  $data['img'][intval($fileDate)] = $fileData;
         if(!isset($data['meta'])) $data['meta'] = array(
+            "project"=> $project,
             "nwslid" => '',
             "pe" => '',
             "lastEdit"=> '',
