@@ -44,7 +44,11 @@ function saveData(jsonData){
         type: 'POST',
         url: 'analysisBackEnd.php',
         data: {action:"saveData",json: JSON.stringify(jsonData)},
-        dataType: 'json'
+        dataType: 'json',
+        success: function(response){
+            console.log(response);
+            alert(response);
+        }
     });
 
 }
@@ -188,7 +192,6 @@ $(document).ready(function() {
     });
 
     $("#saveData").click(function(){
-        console.log(imgData);
         saveData(imgData);
     });
 

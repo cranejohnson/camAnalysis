@@ -21,7 +21,10 @@ $i=0;
  if($action == 'saveData'){
      $json = json_decode($_REQUEST['json'],TRUE);
      $proj = $json['meta']['project'];
-     file_put_contents("../cam-images/".$proj."/data.json",json_encode($json,JSON_PRETTY_PRINT));
+     if(file_put_contents("../cam-images/".$proj."/data.json",json_encode($json,JSON_PRETTY_PRINT))){
+        echo "saved";
+     }
+
  }
 
 
