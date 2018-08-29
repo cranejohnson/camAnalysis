@@ -21,6 +21,11 @@ $i=0;
  if($action == 'saveData'){
      $json = json_decode($_REQUEST['json'],TRUE);
      $proj = $json['meta']['project'];
+     #copy("../cam-images/".$proj."/data.json","../cam-images/".$proj."/data.json.".date('YMDhm');
+     $from = "../cam-images/".$proj."/data.json";
+     $to = "../cam-images/".$proj."/data.json.".date('YmdHi');
+     if(copy($from,$to)) echo "Copied file from: $from To:$to  ";
+     
      if(file_put_contents("../cam-images/".$proj."/data.json",json_encode($json,JSON_PRETTY_PRINT))){
         echo "saved";
      }
